@@ -7,6 +7,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Drawing;
 using System.IO;
+using System.Runtime.Caching;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -17,7 +18,15 @@ namespace CRUDSederhana
     public partial class Form1 : Form
     {
         // Ganti "SERVER" sesuai dengan SQL Server Anda
-        private string connectionString = "Data Source=LAPTOPGW1;Initial Catalog=OrganisasiMahasiswa;Integrated Security=True";
+        private readonly string connectionString = "Data Source=LAPTOPGW1;Initial Catalog=OrganisasiMahasiswa;Integrated Security=True";
+
+        // Inisialisasi cache dan kebijakan kadaluarsa
+        private readonly MemoryCache _cache = MemoryCache.Default;
+        private readonly CacheItemPolicy _policy = new CacheItemPolicy
+        {
+            AbsoluteExpiration = DateTimeOffset.Now.AddMinutes(5)
+        };
+        private const string CacheKey = "MahasiswaData";
 
         public Form1()
         {
@@ -27,8 +36,33 @@ namespace CRUDSederhana
         // Event saat form pertama kali dimuat
         private void Form1_Load(object sender, EventArgs e)
         {
+            EnsureIndexes();
             LoadData();
         }
+
+        private void EnsureIndexes()
+        {
+            using (var conn = new SqlConnection(connectionString))
+            {
+                conn.Open();
+                var indexScript = @"
+                IF OBJECT_ID('dbo.Mahasiswa', 'U') IS NOT NULL
+                    BEGIN
+                        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='idx_Mahasiswa_Nama')
+                            CREATE NONCLUSTERED INDEX idx_Mahasiswa_Nama ON dbo.Mahasiswa(Nama);
+                        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='idx_Mahasiswa_Email')
+                            CREATE NONCLUSTERED INDEX idx_Mahasiswa_Email ON dbo.Mahasiswa(Email);
+                        IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name='idx_Mahasiswa_Telepon')
+                            CREATE NONCLUSTERED INDEX idx_Mahasiswa_Telepon ON dbo.Mahasiswa(Telepon);
+                    END";
+
+                using (var cmd = new SqlCommand(indexScript, conn))
+                {
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
 
         // Fungsi untuk mengosongkan semua input pada TextBox
         private void ClearForm()
@@ -40,28 +74,51 @@ namespace CRUDSederhana
             txtAlamat.Clear();
             txtNIM.Focus();  // Fokus kembali ke NIM agar user siap memasukkan data baru
         }
+
         // Fungsi untuk menampilkan data di DataGridView
         private void LoadData()
         {
-            using (SqlConnection conn = new SqlConnection(connectionString))
+            DataTable dt;
+            if (_cache.Contains(CacheKey))
             {
-                try
+                dt = _cache.Get(CacheKey) as DataTable;
+            }
+            else
+            {
+                dt = new DataTable();
+                using (var conn = new SqlConnection(connectionString))
                 {
                     conn.Open();
-                    string query = "SELECT NIM AS [NIM], Nama, Email, Telepon, Alamat FROM Mahasiswa";
-                    SqlDataAdapter da = new SqlDataAdapter(query, conn);
-                    DataTable dt = new DataTable();
+                    var query = "SELECT NIM AS [NIM], Nama, Email, Telepon, Alamat FROM dbo.Mahasiswa";
+                    var da = new SqlDataAdapter(query, conn);
                     da.Fill(dt);
-
-                    dgvMahasiswa.AutoGenerateColumns = true;
-                    dgvMahasiswa.DataSource = dt;
                 }
-                catch (Exception ex)
+                _cache.Add(CacheKey, dt, _policy);
+            }
+
+            dgvMahasiswa.AutoGenerateColumns = true;
+            dgvMahasiswa.DataSource = dt;
+        }
+
+        private void AnalyzeQuery(string sqlQuery)
+        {
+            using (var conn = new SqlConnection(connectionString))
+            {
+                conn.InfoMessage += (s, e) => MessageBox.Show(e.Message, "STATISTICS INFO");
+                conn.Open();
+                var wrapped = $@"
+                    SET STATISTICS IO ON;
+                    SET STATISTICS TIME ON;
+                    {sqlQuery};
+                    SET STATISTICS IO OFF;
+                    SET STATISTICS TIME OFF;";
+                using (var cmd = new SqlCommand(wrapped, conn))
                 {
-                    MessageBox.Show("Error: " + ex.Message, "Kesalahan", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    cmd.ExecuteNonQuery();
                 }
             }
         }
+
 
         // Fungsi untuk menambahkan data (CREATE)
         private void btnTambah_Click(object sender, EventArgs e)
@@ -89,6 +146,7 @@ namespace CRUDSederhana
                         int rowsAffected = cmd.ExecuteNonQuery();
                         if (rowsAffected > 0)
                         {
+                            _cache.Remove(CacheKey);
                             MessageBox.Show("Data berhasil ditambahkan!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             LoadData();
                             ClearForm();
@@ -128,6 +186,7 @@ namespace CRUDSederhana
                                 int rowsAffected = cmd.ExecuteNonQuery();
                                 if (rowsAffected > 0)
                                 {
+                                    _cache.Remove(CacheKey);
                                     MessageBox.Show("Data berhasil dihapus", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                     LoadData();
                                     ClearForm();
@@ -153,6 +212,7 @@ namespace CRUDSederhana
 
         private void btnRefresh_Click(object sender, EventArgs e)
         {
+            _cache.Remove(CacheKey);
             LoadData();
             MessageBox.Show($"Jumlah Kolom: {dgvMahasiswa.ColumnCount}\nJumlah Baris: {dgvMahasiswa.RowCount}",
                 "Debugging DataGridView", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -180,6 +240,7 @@ namespace CRUDSederhana
                             int rowsAffected = cmd.ExecuteNonQuery();
                             if (rowsAffected > 0)
                             {
+                                _cache.Remove(CacheKey);
                                 MessageBox.Show("Data berhasil diperbarui!", "Sukses", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 LoadData();
                                 ClearForm();
@@ -206,16 +267,13 @@ namespace CRUDSederhana
         // Fungsi untuk mengisi TextBox saat baris dipilih di DataGridView
         private void dgvMahasiswa_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0)
-            {
-                DataGridViewRow row = dgvMahasiswa.Rows[e.RowIndex];
-
-                txtNIM.Text = row.Cells[0].Value.ToString();
-                txtNama.Text = row.Cells[1].Value.ToString();
-                txtEmail.Text = row.Cells[2].Value?.ToString();
-                txtTelepon.Text = row.Cells[3].Value?.ToString();
-                txtAlamat.Text = row.Cells[4].Value?.ToString();
-            }
+            if (e.RowIndex < 0) return;
+            var row = dgvMahasiswa.Rows[e.RowIndex];
+            txtNIM.Text = row.Cells[0].Value?.ToString() ?? string.Empty;
+            txtNama.Text = row.Cells[1].Value?.ToString() ?? string.Empty;
+            txtEmail.Text = row.Cells[2].Value?.ToString() ?? string.Empty;
+            txtTelepon.Text = row.Cells[3].Value?.ToString() ?? string.Empty;
+            txtAlamat.Text = row.Cells[4].Value?.ToString() ?? string.Empty;
         }
 
         // Method untuk menampilkan preview data di DataGridView
@@ -271,6 +329,11 @@ namespace CRUDSederhana
                 string filePath = openFileDialog.FileName;
                 PreviewData(filePath); // Display preview before importing
             }
+        }
+        private void BtnAnalyze_Click(object sender, EventArgs e)
+        {
+            var heavyQuery = "SELECT Nama, Email, Telepon FROM dbo.Mahasiswa WHERE Nama LIKE 'A%';";
+            AnalyzeQuery(heavyQuery);
         }
     }
 }
