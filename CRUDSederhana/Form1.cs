@@ -18,7 +18,10 @@ namespace CRUDSederhana
     public partial class Form1 : Form
     {
         // Ganti "SERVER" sesuai dengan SQL Server Anda
-        private readonly string connectionString = "Data Source=LAPTOPGW1;Initial Catalog=OrganisasiMahasiswa;Integrated Security=True";
+        // private readonly string connectionString = "Data Source=LAPTOPGW1;Initial Catalog=OrganisasiMahasiswa;Integrated Security=True";
+
+        Koneksi kn = new Koneksi(); // Koneksi ke database menggunakan class Koneksi
+        string strKonek = ""; // string koneksi ke database
 
         // Inisialisasi cache dan kebijakan kadaluarsa
         private readonly MemoryCache _cache = MemoryCache.Default;
@@ -31,6 +34,7 @@ namespace CRUDSederhana
         public Form1()
         {
             InitializeComponent();
+            strKonek = kn.connectionString(); // Mendapatkan string koneksi dari class Koneksi
         }
 
         // Event saat form pertama kali dimuat
@@ -42,7 +46,7 @@ namespace CRUDSederhana
 
         private void EnsureIndexes()
         {
-            using (var conn = new SqlConnection(connectionString))
+            using (var conn = new SqlConnection(strKonek))
             {
                 conn.Open();
                 var indexScript = @"
@@ -86,7 +90,7 @@ namespace CRUDSederhana
             else
             {
                 dt = new DataTable();
-                using (var conn = new SqlConnection(connectionString))
+                using (var conn = new SqlConnection(strKonek))
                 {
                     conn.Open();
                     var query = "SELECT NIM AS [NIM], Nama, Email, Telepon, Alamat FROM dbo.Mahasiswa";
@@ -102,7 +106,7 @@ namespace CRUDSederhana
 
         private void AnalyzeQuery(string sqlQuery)
         {
-            using (var conn = new SqlConnection(connectionString))
+            using (var conn = new SqlConnection(strKonek))
             {
                 conn.InfoMessage += (s, e) => MessageBox.Show(e.Message, "STATISTICS INFO");
                 conn.Open();
@@ -123,7 +127,7 @@ namespace CRUDSederhana
         // Fungsi untuk menambahkan data (CREATE)
         private void btnTambah_Click(object sender, EventArgs e)
         {
-            using (SqlConnection conn = new SqlConnection(connectionString))
+            using (SqlConnection conn = new SqlConnection(strKonek))
             {
                 try
                 {
@@ -172,7 +176,7 @@ namespace CRUDSederhana
                 DialogResult confirm = MessageBox.Show("Apakah Anda ingin menghapus data ini?", "Konfirmasi", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                 if (confirm == DialogResult.Yes)
                 {
-                    using (SqlConnection conn = new SqlConnection(connectionString))
+                    using (SqlConnection conn = new SqlConnection(strKonek))
                     {
                         try
                         {
@@ -223,7 +227,7 @@ namespace CRUDSederhana
         {
             if (dgvMahasiswa.SelectedRows.Count > 0)
             {
-                using (SqlConnection conn = new SqlConnection(connectionString))
+                using (SqlConnection conn = new SqlConnection(strKonek))
                 {
                     try
                     {
@@ -334,6 +338,13 @@ namespace CRUDSederhana
         {
             var heavyQuery = "SELECT Nama, Email, Telepon FROM dbo.Mahasiswa WHERE Nama LIKE 'A%';";
             AnalyzeQuery(heavyQuery);
+        }
+
+        private void btnBack_Click(object sender, EventArgs e)
+        {
+            this.Hide(); // Sembunyikan Form1
+            FormDashboard dashboard = new FormDashboard(); // Buat instance FormDashboard
+            dashboard.Show(); // Tampilkan FormDashboard
         }
     }
 }
