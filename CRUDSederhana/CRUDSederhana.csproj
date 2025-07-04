@@ -148,6 +148,12 @@
     <Compile Include="FormOrganisasi.Designer.cs">
       <DependentUpon>FormOrganisasi.cs</DependentUpon>
     </Compile>
+    <Compile Include="FormPengaturanIP.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FormPengaturanIP.Designer.cs">
+      <DependentUpon>FormPengaturanIP.cs</DependentUpon>
+    </Compile>
     <Compile Include="Koneksi.cs" />
     <Compile Include="OrganisasiDataSet.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -180,6 +186,9 @@
     <Content Include="OrganisasiReport.rdlc">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <EmbeddedResource Include="FormPengaturanIP.resx">
+      <DependentUpon>FormPengaturanIP.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="PreviewForm.resx">
       <DependentUpon>PreviewForm.cs</DependentUpon>
     </EmbeddedResource>

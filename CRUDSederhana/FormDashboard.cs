@@ -57,5 +57,11 @@ namespace CRUDSederhana
                 Application.Exit(); // Keluar dari aplikasi jika pengguna memilih Ya
             }
         }
+
+        private void btnPengaturanIP_Click(object sender, EventArgs e)
+        {
+            FormPengaturanIP form = new FormPengaturanIP();
+            form.ShowDialog();
+        }
     }
 }

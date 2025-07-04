@@ -36,6 +36,7 @@ namespace CRUDSederhana
             this.btnKegiatan = new System.Windows.Forms.Button();
             this.btnExit = new System.Windows.Forms.Button();
             this.labelTitle = new System.Windows.Forms.Label();
+            this.btnPengaturanIP = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // btnMahasiswa
@@ -131,11 +132,23 @@ namespace CRUDSederhana
             this.labelTitle.Text = "DASHBOARD UTAMA";
             this.labelTitle.TextAlign = System.Drawing.ContentAlignment.TopCenter;
             // 
+            // btnPengaturanIP
+            // 
+            this.btnPengaturanIP.Location = new System.Drawing.Point(12, 12);
+            this.btnPengaturanIP.Name = "btnPengaturanIP";
+            this.btnPengaturanIP.Size = new System.Drawing.Size(56, 23);
+            this.btnPengaturanIP.TabIndex = 6;
+            this.btnPengaturanIP.Text = "setting";
+            this.btnPengaturanIP.TextAlign = System.Drawing.ContentAlignment.TopLeft;
+            this.btnPengaturanIP.UseVisualStyleBackColor = true;
+            this.btnPengaturanIP.Click += new System.EventHandler(this.btnPengaturanIP_Click);
+            // 
             // FormDashboard
             // 
             this.AutoSize = true;
             this.BackColor = System.Drawing.Color.ForestGreen;
             this.ClientSize = new System.Drawing.Size(1006, 553);
+            this.Controls.Add(this.btnPengaturanIP);
             this.Controls.Add(this.labelTitle);
             this.Controls.Add(this.btnMahasiswa);
             this.Controls.Add(this.btnOrganisasi);
@@ -158,5 +171,6 @@ namespace CRUDSederhana
         private System.Windows.Forms.Button btnKegiatan;
         private System.Windows.Forms.Button btnExit;
         private System.Windows.Forms.Label labelTitle;
+        private System.Windows.Forms.Button btnPengaturanIP;
     }
 }
